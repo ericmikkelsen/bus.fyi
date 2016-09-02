@@ -16,6 +16,7 @@ function get_zip_and_put(zip){
 
 function unzip_and_put(files){
     fs.createReadStream(zip.location).pipe(unzip.Extract({ path: zip.unzip_location}));
+
     if(zip.callbacks.unzip_and_put != undefined){
       zip_file_local.on('close', function() {
         callback(zip.callbacks.unzip_and_put(files));
@@ -23,10 +24,18 @@ function unzip_and_put(files){
     }
   }
 
+var folders = {
+  'dist',
+  'dist/data',
+  'dist/site',
+  'dist/tmp',
+  'dist/zip',
+}
+
 var cta_zip = {
   url:'http://www.transitchicago.com/downloads/sch_data/google_transit.zip',
-  location:'data/GTFS-cta.zip',
-  unzip_location: 'data/cta',
+  location:'dist/zip/GTFS-cta.zip',
+  unzip_location: 'dist/data/cta',
   callbacks: {
     get_zip_and_put: unzip_and_put,
   }
