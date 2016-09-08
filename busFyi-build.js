@@ -1,8 +1,15 @@
-var unzip = require('unzip'),
-    request = require('request'),
+var
+    Converter = require("csvtojson").Converter,
     fs = require('fs'),
-    out = fs.createWriteStream('out'),
-    Converter = require("csvtojson").Converter;
+    http = require('http'),
+    hm = require('html-minifier').minify,
+    nj = require('nunjucks'),
+    request = require('request'),
+    unzip = require('unzip');
+
+
+//config
+nj.configure('views', { autoescape: true });
 
 
 
@@ -39,19 +46,25 @@ function get_zip_and_put(zip){
     }
   }//get_zip_and_put
 
+//callback
+function cb(data){
+  if (data.callbacks[0] != undefined ) {
+    callback = data.callbacks[0];
+    data.callbacks.shift();
+    callback(data);
+    }
+}
+
 //unzips the gtfs data and puts it somewheref
 function unzip_and_put(zip){
     files_local = unzip.Extract({ path: zip.unzip_location});
     zip_file = fs.createReadStream(zip.location).pipe(files_local);
-
-    if(zip.callbacks.unzip_and_put != undefined){
-      files_local.on('close', function() {
-        zip.callbacks.unzip_and_put(zip);
-      });
-    }
+    cb(zip);
   }
 
+//renames the root folder
 function gtfs_rename_root_folder(gtfs_data){
+
   converter = new Converter({});
   converter.on("end_parsed", function (jsonArray) {
     agency_name = jsonArray[0].agency_name.toLowerCase();
@@ -59,21 +72,59 @@ function gtfs_rename_root_folder(gtfs_data){
 
     fs.rename(gtfs_data.unzip_location, 'dist/data/'+agency_name);
     gtfs_data.unzip_location = 'dist/data/'+agency_name;
-
-    if(gtfs_data.callbacks.gtfs_rename_root_folder != undefined){
-        gtfs_data.callbacks.gtfs_rename_root_folder(zip);
-    }
   });
-
   require("fs").createReadStream(gtfs_data.unzip_location+'/agency.txt').pipe(converter);
+  cb(gtfs_data);
 }
+
+//convet files to json
+function toJson(data){
+
+}
+
 var cta_zip = {
   url:'http://www.transitchicago.com/downloads/sch_data/google_transit.zip',
   location:'dist/zip/GTFS-cta.zip',
   unzip_location: 'dist/data/chicago-transit-authority',
-  callbacks: {
-    get_zip_and_put: unzip_and_put,
-    unzip_and_put: gtfs_rename_root_folder
-  }
+  csv: [
+    'agency.txt',
+    'stops.txt',
+    'trips.txt',
+  ],
+  callbacks: [
+    get_zip_and_put,
+    unzip_and_put,
+    gtfs_rename_root_folder
+  ]
 }
-//get_zip_and_put(cta_zip);
+
+get_zip_and_put(cta_zip);
+
+
+
+
+
+
+
+function build__rootForm(){
+  //view
+  v = ['head.html','location-form.html','footer.html'];
+  //page
+  p = '';
+  for (var i = 0; i < v.length; i++) {
+    //render
+    r = nj.render(v[i], {title: 'Bus & Train Tracker'});
+    r = hm(r, {
+      collapseWhitespace: true,
+      removeComments: true,
+      removeAttributeQuotes: true,
+      minifyJS: true,
+      minifyCSS: true,
+      });
+    //add to page
+    p += r;
+  }
+  fs.createWriteStream('dist/site/index.html').write(p);
+}
+
+build__rootForm();

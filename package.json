@@ -18,5 +18,11 @@
   "bugs": {
     "url": "https://github.com/ericmikkelsen/bus.fyi/issues"
   },
-  "homepage": "https://github.com/ericmikkelsen/bus.fyi#readme"
+  "homepage": "https://github.com/ericmikkelsen/bus.fyi#readme",
+  "dependencies": {
+    "csvtojson": "^1.0.0",
+    "express": "^4.14.0",
+    "html-minifier": "^3.0.2",
+    "nunjucks": "^2.4.2"
+  }
 }
