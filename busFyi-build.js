@@ -1,11 +1,14 @@
 var
     Converter = require("csvtojson").Converter,
+    es = require('event-stream'),
     fs = require('fs'),
     http = require('http'),
     hm = require('html-minifier').minify,
     nj = require('nunjucks'),
     request = require('request'),
-    unzip = require('unzip');
+    stream = require('stream'),
+    unzip = require('unzip'),
+    util = require('util');
 
 
 //config
@@ -46,7 +49,7 @@ function get_zip_and_put(zip){
     }
   }//get_zip_and_put
 
-//callback
+//callback so that callbacks always work the same way
 function cb(data){
   if (data.callbacks[0] != undefined ) {
     callback = data.callbacks[0];
@@ -69,62 +72,75 @@ function gtfs_rename_root_folder(gtfs_data){
   converter.on("end_parsed", function (jsonArray) {
     agency_name = jsonArray[0].agency_name.toLowerCase();
     agency_name = slugify(agency_name);
+    csv = gtfs_data.csv;
+    fs.rename(gtfs_data.unzip_location, gtfs_data.folder+agency_name);
 
-    fs.rename(gtfs_data.unzip_location, 'dist/data/'+agency_name);
-    gtfs_data.unzip_location = 'dist/data/'+agency_name;
+    gtfs_data.unzip_location = gtfs_data.folder+agency_name;
+
   });
   require("fs").createReadStream(gtfs_data.unzip_location+'/agency.txt').pipe(converter);
   cb(gtfs_data);
 }
 
-//convet files to json
 function toJson(data){
+  csv = data.csv;
+  folder = data.folder+data.agency_name+'/';
 
+  for (var i = 0; i < csv.length; i++) {
+    csv_file = csv[i];
+    json_file = csv_file.split('.');
+    json_file = json_file[0]+'.json';
+    console.log(folder+json_file);
+    csvConverter_config = {
+      constructResult:false,
+      toArrayString: true,
+    }
+    var csvConverter=new Converter(csvConverter_config); // The parameter false will turn off final result construction. It can avoid huge memory consumption while parsing. The trade off is final result will not be populated to end_parsed event.
+    var readStream=require("fs").createReadStream(folder+csv_file);
+    var writeStream=require("fs").createWriteStream(folder+json_file);
+    readStream.pipe(csvConverter).pipe(writeStream);
+  }
 }
 
 var cta_zip = {
+  folder: 'dist/data/',
+  agency_name: 'chicago-transit-authority',
   url:'http://www.transitchicago.com/downloads/sch_data/google_transit.zip',
   location:'dist/zip/GTFS-cta.zip',
   unzip_location: 'dist/data/chicago-transit-authority',
   csv: [
     'agency.txt',
+    'routes.txt',
     'stops.txt',
-    'trips.txt',
+    'trips.txt'
+    //'stop_times.txt'
   ],
   callbacks: [
-    get_zip_and_put,
-    unzip_and_put,
-    gtfs_rename_root_folder
+    // get_zip_and_put,
+    // unzip_and_put,
+    // gtfs_rename_root_folder,
+    // toJson,
   ]
-}
+};
 
-get_zip_and_put(cta_zip);
-
-
-
-
-
-
-
-function build__rootForm(){
-  //view
-  v = ['head.html','location-form.html','footer.html'];
-  //page
-  p = '';
-  for (var i = 0; i < v.length; i++) {
-    //render
-    r = nj.render(v[i], {title: 'Bus & Train Tracker'});
-    r = hm(r, {
-      collapseWhitespace: true,
-      removeComments: true,
-      removeAttributeQuotes: true,
-      minifyJS: true,
-      minifyCSS: true,
-      });
-    //add to page
-    p += r;
+function build__stops(){
+  data = {
+    stops: JSON.parse(fs.readFileSync(folders[1]+'/chicago-transit-authority/stops.json', 'utf8')),
+    stops_dir: folders[1]+'/chicago-transit-authority/stops/',
   }
-  fs.createWriteStream('dist/site/index.html').write(p);
-}
 
-build__rootForm();
+  for (var i = 0; i < data.stops.length; i++) {
+    stop_json = data.stops_dir+data.stops[i].stop_id+'.json';
+    stp = {
+      "details" :data.stops[i],
+      "arrivals":[]
+    };
+    stp = JSON.stringify(stp);
+    //fs.createWriteStream(stop_json).write( JSON.stringify(stp));
+    fs.writeFileSync(stop_json, stp,'utf8');
+  }//for end
+}
+build__stops();
+
+//get_zip_and_put(cta_zip);
+//toJson(cta_zip);
