@@ -113,4 +113,4 @@ function jack(file){
 
 }//jack
 
-//jack('dist/data/chicago-transit-authority/stop_times.txt');
+jack('dist/data/chicago-transit-authority/stop_times.txt');

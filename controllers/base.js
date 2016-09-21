@@ -130,16 +130,12 @@ var folders = {
            //turn json into parseable data
              JSON_body = JSON.parse(body, 'utf8');
              location = JSON_body.results[0].geometry.location;
-
-
-            //  console.log(gtfs_data.stops);
-            //  console.log(location);
             write('<h1>Nearby Stops</h1><p></p>');
 
              for (var i = 0; i < gtfs_data.stops.length; i++) {
                //ERIC TURN THIS IF STATMENT INTO FILTER.
                if (between(gtfs_data.stops[i].stop_lon,location.lng - .003, location.lng + .003)&&between(gtfs_data.stops[i].stop_lat,location.lat - .003, location.lat + .003)) {
-                 console.log(gtfs_data.stops[i]);
+                //console.log(gtfs_data.stops[i]);
                  btn_data = {
                    btn:{
                      url:'stp?id='+gtfs_data.stops[i].stop_id+'&name='+encodeURIComponent(gtfs_data.stops[i].stop_name),
@@ -166,11 +162,14 @@ var folders = {
       stp__body = function(res,req,write,data,callback){
 
         write('<h1>'+req.query.name+'</h1>');
-        write('<h2>Scheduled Arrival Times</h2>');
+        ///write('<h2>Scheduled Arrival Times</h2>');
+
+        //Scheduled TIMES holding til I can figure out how to do this
+
         stop_json = folders.data+'/stops/'+req.query.id+'.json';
         stop_json= fs.readFileSync(stop_json, 'utf8');
         stop_json = JSON.parse(stop_json,'utf8');
-
+/*
         today = new Date();
         min = today.getMinutes();
         hh = today.getHours();
@@ -204,8 +203,8 @@ var folders = {
                 write('<p>'+stpLabel+' - '+stpHh+':'+stpMin+''+'</p>');
               }
 
-            }//if between
-
+            }//for
+*/
         //ERIC MAKE THIS REUSABLE AT SOMEPOINT IN LIFE
         //LIVE DATA
         urls = {
@@ -226,11 +225,14 @@ var folders = {
           }//train
 
         };//urls
-
-        if (stop_json.arrivals[0]) {
-
+        //console.log(stop_json.arrivals[0]);
         stop_type = stop_json.arrivals[0].route_type;
-        if(stop_type == 0){
+
+        if (stop_json.arrivals[0] !== null) {
+
+
+
+        if(stop_type == 3){
 
           url = urls.bus.getPredictions(stop_json.details.stop_id);
 
@@ -261,7 +263,7 @@ var folders = {
                     }
                   }
 
-                  //console.log(gtfs_data.routes);
+
                   rt_name = gtfs_data.routes.filter(getRt);
                   rt_name = rt_name[0].route_long_name;
 
